@@ -20,7 +20,7 @@ import json
 import logging
 
 import apache_beam as beam
-import google.cloud.dlp
+from google.cloud import dlp_v2
 import google.cloud.logging
 
 from apache_beam.io import ReadFromPubSub
@@ -104,7 +104,7 @@ class DeidentifyLogsFn(beam.DoFn):
 
   def process(self, logs):
     if not self.dlp:
-      self.dlp = google.cloud.dlp_v2.DlpServiceClient()
+      self.dlp = dlp_v2.DlpServiceClient()
     if not self.dlp:
         logging.error('FAILED to initialize DLP client')
     else:
