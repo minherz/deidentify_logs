@@ -1,0 +1,4 @@
+apache-beam[gcp]==2.36.0
+google.cloud.dlp>=3.6.0
+google.cloud.logging>=3.0.0
+google.cloud.pubsub>=2.9.0
