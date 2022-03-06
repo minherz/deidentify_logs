@@ -27,7 +27,7 @@ from apache_beam.transforms.window import FixedWindows
 from apache_beam.typehints.typehints import Any, Dict, List
 
 from google.cloud import dlp_v2
-import google.cloud.logging
+from google.cloud import logging_v2
 
 
 # identify payloads
@@ -137,7 +137,7 @@ class SendLogsFn(beam.DoFn):
     def process(self, logs):
         logs = list(map(self._set_log_name, logs))
         if not self.logger:
-            gcp_logging_client = google.cloud.logging.Client()
+            gcp_logging_client = logging_v2.Client()
         if gcp_logging_client:
             self.logger = gcp_logging_client.logger(self.log_name)
             if self.logger:
@@ -204,8 +204,8 @@ def run(argv=None, save_main_session=True):
         _ = (
             batch
             | "Deidentify using primitive transformation" >> beam.ParDo(DeidentifyLogsFn(project_qualified_name))
-            # | "Send to Cloud Logging" >> beam.ParDo(SendLogsFn(output_logname))
-            | 'Print' >> beam.Map(print_row)
+            | "Send to Cloud Logging" >> beam.ParDo(SendLogsFn(output_logname))
+            # | 'Print' >> beam.Map(print_row)
         )
 
 
