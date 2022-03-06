@@ -7,7 +7,7 @@ then
     exit 1
 fi
 
-container_uri=${2:-"gcr.io/minherz/log-deidentification-custom-image:latest"}
+container_uri=${2:-"gcr.io/minherz/log-deidentification-custom-image:with_sdk"}
 
 echo "🏗️ Enabling Google APIs..."
 gcloud --project ${project_id} services enable \
@@ -49,7 +49,7 @@ then
     gsutil mb ${bucket_name}
 fi
 pip3 install wheel apache_beam[gcp] google-cloud-logging
-python3 -m deidentify_logs \
+python3 deidentify.py \
    --runner DataflowRunner \
    --experiments=use_runner_v2 \
    --sdk_container_image=$container_uri \
