@@ -7,6 +7,8 @@ then
     exit 1
 fi
 
+container_uri=${2:-"gcr.io/minherz/log-deidentification-custom-image:latest"}
+
 echo "🏗️ Enabling Google APIs..."
 gcloud --project ${project_id} services enable \
     compute.googleapis.com \
@@ -33,8 +35,8 @@ then
     cat > policy.yml <<EOF
 bindings:
 - members:
-    - ${export_sink_sa}
-    role: roles/pubsub.publisher
+  - ${export_sink_sa}
+  role: roles/pubsub.publisher
 EOF
     gcloud --project=${project_id} pubsub topics set-iam-policy log_ingestion_topic policy.yaml --quiet
 fi
@@ -46,8 +48,13 @@ if [ $? == 1 ]
 then
     gsutil mb ${bucket_name}
 fi
-pip3 install wheel
-pip3 install apache_beam[gcp]
-pip3 install google-cloud-blp google-cloud-logging --upgrade
-python3 -m deidentify_logs --runner DataflowRunner --region us-central1 --temp_location "${bucket_name}/temp" \
---project ${project_id} --input log_ingestion_subscr --output_logname no-pii-logs
+pip3 install wheel apache_beam[gcp] google-cloud-logging
+python3 -m deidentify_logs \
+   --runner DataflowRunner \
+   --experiments=use_runner_v2 \
+   --sdk_container_image=$container_uri \
+   --region us-central1 \
+   --project ${project_id} \
+   --temp_location "${bucket_name}/temp" \
+   --input log_ingestion_subscr \
+   --output_logname no-pii-logs
