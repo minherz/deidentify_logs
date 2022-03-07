@@ -56,5 +56,5 @@ python3 deidentify.py \
    --region us-central1 \
    --project ${project_id} \
    --temp_location "${bucket_name}/temp" \
-   --input log_ingestion_subscr \
-   --output_logname no-pii-logs
+   --input-pubsub log_ingestion_subscr \
+   --log-id no-pii-logs
