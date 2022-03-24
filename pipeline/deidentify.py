@@ -23,6 +23,7 @@ import apache_beam as beam
 from apache_beam.io import ReadFromPubSub
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
+from apache_beam.options.pipeline_options import GoogleCloudOptions
 from apache_beam.transforms.window import FixedWindows
 from apache_beam.typehints.typehints import Any, Dict, List
 
@@ -171,14 +172,14 @@ def run(argv=None, save_main_session=True):
     # We use the save_main_session option because one or more DoFn's in this
     # workflow rely on global context (e.g., a module imported at module level).
     pipeline_options = PipelineOptions(pipeline_args, streaming=True)
-    pipeline_options.view_as(
-        SetupOptions).save_main_session = save_main_session
-
+    pipeline_options.view_as(SetupOptions).save_main_session = save_main_session
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
     try:
-        project_id = pipeline_options.project
+        project_id = pipeline_options.view_as(GoogleCloudOptions).project
     except AttributeError:
         pass
+    if not project_id:
+        raise "Project id is not provided. Pass it using '--project' argument or setup as GOOGLE_CLOUD_PROJECT env var"
 
     project_qualified_name = f"projects/{project_id}"
     input_subscription = f"{project_qualified_name}/subscriptions/{known_args.pubsub_subscription}"

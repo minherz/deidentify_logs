@@ -17,7 +17,7 @@ gcloud --project ${project_id} services enable \
     dlp.googleapis.com
 
 echo "📟 Preparing PubSub..."
-pubsub_topic=`gcloud --project ${project_id} pubsub topics describe log_ingestion_topic --format="value(name)"`
+pubsub_topic=`gcloud --project ${project_id} pubsub topics describe log_ingestion_topic --format="value(name)" 2> /dev/null`
 if [ -z "$pubsub_topic" ]
 then
     gcloud --project=${project_id} pubsub topics create log_ingestion_topic
@@ -25,28 +25,31 @@ then
 fi
 
 echo "🚰 Configuring export sink..."
-export_sink_sa=`gcloud --project ${project_id} logging sinks describe log-with-pii-sink --format="value(writerIdentity)"`
+export_sink_sa=`gcloud --project ${project_id} logging sinks describe log-with-pii-sink --format="value(writerIdentity)" 2> /dev/null`
 if [ -z "$export_sink_sa" ]
 then
     pubsub_topic="projects/${project_id}/topics/log_ingestion_topic"
     logname="projects/${project_id}/logs/logs-with-pii" 
     gcloud --project=${project_id} logging sinks create log-with-pii-sink "pubsub.googleapis.com/${pubsub_topic}" \
         --log-filter="logName=${logname}"
+    export_sink_sa=`gcloud --project ${project_id} logging sinks describe log-with-pii-sink --format="value(writerIdentity)"`
+    etag=`gcloud --project ${project_id} pubsub topics get-iam-policy log_ingestion_topic --format="value(etag)"`
     cat > policy.yml <<EOF
 bindings:
 - members:
   - ${export_sink_sa}
   role: roles/pubsub.publisher
+etag: ${etag}
 EOF
-    gcloud --project=${project_id} pubsub topics set-iam-policy log_ingestion_topic policy.yaml --quiet
+    gcloud --project=${project_id} pubsub topics set-iam-policy log_ingestion_topic policy.yml
 fi
 
 echo "🔦 Deploy Dataflow pipeline..."
 bucket_name="gs://${project_id}-example-bucket"
-gsutil list ${bucket_name}
+gsutil list -p ${project_id} ${bucket_name} 2> /dev/null
 if [ $? == 1 ]
 then
-    gsutil mb ${bucket_name}
+    gsutil mb -p ${project_id} ${bucket_name}
 fi
 pip3 install wheel apache_beam[gcp] google-cloud-logging
 python3 deidentify.py \
