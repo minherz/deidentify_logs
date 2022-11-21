@@ -189,25 +189,25 @@ def run(argv=None, save_main_session=True):
     logging.info(f"starting the pipeline to read from:{input_subscription}")
 
     # The pipeline will be run on exiting the with block.
-    with beam.Pipeline(options=pipeline_options) as p:
-
-        logs_with_pii = (
-            p
-            | 'Read exports from Pub/Sub sink' >> ReadFromPubSub(subscription=input_subscription).with_output_types(bytes)
-            | 'Convert to UTF-8' >> beam.Map(lambda data: data.decode("utf-8")).with_output_types(str)
-            | 'Convert string to Json' >> beam.Map(lambda msg: json.loads(msg)).with_output_types(Dict[str, Any])
-        )
-        batch = (
-            logs_with_pii
-            | f'Collect logs into batches received within last ${window_interval_sec} secs' >> beam.WindowInto(FixedWindows(window_interval_sec, 0))
-            | 'Convert batched logs into one log array' >> beam.CombineGlobally(OneListFn()).with_output_types(List[Dict[str, Any]]).without_defaults()
-        )
-        _ = (
-            batch
-            | "Deidentify using primitive transformation" >> beam.ParDo(DeidentifyLogsFn(project_qualified_name))
-            | "Send to Cloud Logging" >> beam.ParDo(SendLogsFn(output_logname))
-            # | 'Print' >> beam.Map(print_row)
-        )
+    p = beam.Pipeline(options=pipeline_options)
+    logs_with_pii = (
+        p
+        | 'Read exports from Pub/Sub sink' >> ReadFromPubSub(subscription=input_subscription).with_output_types(bytes)
+        | 'Convert to UTF-8' >> beam.Map(lambda data: data.decode("utf-8")).with_output_types(str)
+        | 'Convert string to Json' >> beam.Map(lambda msg: json.loads(msg)).with_output_types(Dict[str, Any])
+    )
+    batch = (
+        logs_with_pii
+        | f'Collect logs into batches received within last ${window_interval_sec} secs' >> beam.WindowInto(FixedWindows(window_interval_sec, 0))
+        | 'Convert batched logs into one log array' >> beam.CombineGlobally(OneListFn()).with_output_types(List[Dict[str, Any]]).without_defaults()
+    )
+    _ = (
+        batch
+        | "Deidentify using primitive transformation" >> beam.ParDo(DeidentifyLogsFn(project_qualified_name))
+        | "Send to Cloud Logging" >> beam.ParDo(SendLogsFn(output_logname))
+        # | 'Print' >> beam.Map(print_row)
+    )
+    p.run()
 
 
 if __name__ == '__main__':
