@@ -29,9 +29,8 @@ export_sink_sa=`gcloud --project ${project_id} logging sinks describe log-with-p
 if [ -z "$export_sink_sa" ]
 then
     pubsub_topic="projects/${project_id}/topics/log_ingestion_topic"
-    logname="projects/${project_id}/logs/logs-with-pii" 
     gcloud --project=${project_id} logging sinks create log-with-pii-sink "pubsub.googleapis.com/${pubsub_topic}" \
-        --log-filter="logName=${logname}"
+        --log-filter="LOG_ID(logs-with-pii)"
     export_sink_sa=`gcloud --project ${project_id} logging sinks describe log-with-pii-sink --format="value(writerIdentity)"`
     etag=`gcloud --project ${project_id} pubsub topics get-iam-policy log_ingestion_topic --format="value(etag)"`
     cat > policy.yml <<EOF
