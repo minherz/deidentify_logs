@@ -56,7 +56,7 @@ python3 deidentify.py \
    --experiments=use_runner_v2 \
    --sdk_container_image=$container_uri \
    --region us-central1 \
-   --project ${project_id} \
    --temp_location "${bucket_name}/temp" \
+   --project ${project_id} \
    --input-pubsub log_ingestion_subscr \
    --log-id no-pii-logs

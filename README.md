@@ -34,7 +34,7 @@ gcloud --project=${PROJECT_ID} logging write logs-with-pii "test with SSN 543-23
 The de-identified logs will be ingested into the same project but with the different logname: "no-pii-logs". To see the de-identified logs run the following command. Use the project id where you pipeline is running:
 
 ```bash
-gcloud --project=${PROJECT_ID} logging read "logName:no-pii-logs"
+gcloud --project=${PROJECT_ID} logging read "logName:LOG_ID(no-pii-logs)"
 ```
 
 ### A couple of things about this PoC

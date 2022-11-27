@@ -29,12 +29,12 @@ from apache_beam.typehints.typehints import Any, Dict, List
 
 from google.cloud import dlp_v2
 from google.cloud import logging_v2
-
+from google.api_core.client_options import ClientOptions
 
 # identify payloads
 INSPECT_CONFIG = {
     "info_types": [
-        {"name": "US_SOCIAL_SECURITY_NUMBER" }
+        {"name": "US_SOCIAL_SECURITY_NUMBER"}
     ]
 }
 DEIDENTIFY_CONFIG = {
@@ -52,13 +52,13 @@ DEIDENTIFY_CONFIG = {
 }
 
 
-
 def print_row(row):
     logging.info("received row: %s", row)
 
 
 class OneListFn(beam.CombineFn):
     """Combines all elements into a single list."""
+
     def create_accumulator(self):
         return []
 
@@ -79,8 +79,10 @@ class OneListFn(beam.CombineFn):
 
 class DeidentifyLogsFn(beam.DoFn):
     """Deidentify SSN from textPayload field"""
-    def __init__(self, project: str):
-        self.project = project
+
+    def __init__(self, project_qualified_name: str):
+        self.project = project_qualified_name.split("/", 2)[1]
+        self.project_qualified_name = project_qualified_name
         self.dlp_client = None
 
     def _map_headers(self, header):
@@ -95,7 +97,8 @@ class DeidentifyLogsFn(beam.DoFn):
         # initiate dlp client on first demand
         modified_logs = []
         if not self.dlp_client:
-            self.dlp_client = dlp_v2.DlpServiceClient()
+            options = ClientOptions(quota_project_id=self.project)
+            self.dlp_client = dlp_v2.DlpServiceClient(client_options=options)
         if not self.dlp_client:
             logging.error('FAILED to initialize DLP client')
         else:
@@ -110,7 +113,7 @@ class DeidentifyLogsFn(beam.DoFn):
             }
             response = self.dlp_client.deidentify_content(
                 request={
-                    "parent": self.project,
+                    "parent": self.project_qualified_name,
                     "deidentify_config": DEIDENTIFY_CONFIG,
                     "inspect_config": INSPECT_CONFIG,
                     "item": table_item,
@@ -127,6 +130,7 @@ class DeidentifyLogsFn(beam.DoFn):
 
 class SendLogsFn(beam.DoFn):
     """Ingest array of log entries to designated log"""
+
     def __init__(self, log_name: str):
         self.log_name = log_name
         self.logger = None
@@ -172,7 +176,8 @@ def run(argv=None, save_main_session=True):
     # We use the save_main_session option because one or more DoFn's in this
     # workflow rely on global context (e.g., a module imported at module level).
     pipeline_options = PipelineOptions(pipeline_args, streaming=True)
-    pipeline_options.view_as(SetupOptions).save_main_session = save_main_session
+    pipeline_options.view_as(
+        SetupOptions).save_main_session = save_main_session
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
     try:
         project_id = pipeline_options.view_as(GoogleCloudOptions).project
